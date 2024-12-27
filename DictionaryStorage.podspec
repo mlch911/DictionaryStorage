@@ -19,7 +19,28 @@ Pod::Spec.new do |s|
 
   s.source       = { :git => "https://github.com/naan/DictionaryStorage.git", :tag => "#{s.version}" }
 
-  s.prepare_command = 'swift build -c release && cp -f .build/release/DictionaryStorageMacros ./Binary'
+  s.prepare_command = <<-CMD
+    set -e
+    swift build -c release
+    if [ $? -ne 0 ]; then
+      echo "Error: Failed to build DictionaryStorage"
+      exit 1
+    fi
+
+    if [ -f ".build/release/DictionaryStorageMacros-tool" ]; then
+      cp -f .build/release/DictionaryStorageMacros-tool ./Binary/DictionaryStorageMacros
+    elif [ -f ".build/release/DictionaryStorageMacros" ]; then
+      cp -f .build/release/DictionaryStorageMacros ./Binary/DictionaryStorageMacros
+    else
+      echo "Error: Neither DictionaryStorageMacros-tool nor DictionaryStorageMacros found in .build/release"
+      exit 1
+    fi
+
+    if [ $? -ne 0 ]; then
+      echo "Error: Failed to copy DictionaryStorageMacros to Binary directory"
+      exit 1
+    fi
+  CMD
 
   s.source_files  = "Sources/DictionaryStorage/*.swift"
   s.swift_versions = "5.9"
