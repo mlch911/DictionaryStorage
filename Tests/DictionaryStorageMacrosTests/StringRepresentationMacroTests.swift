@@ -263,32 +263,40 @@ final class StringRepresentationMacroTests: XCTestCase {
             """
             @StringRawRepresentation
             public enum Visa {
-              case hello, world
+              case hello_world
+              case hello_world_2
               case custom(String)
+              case hello_world_3
             }
             """,
             expandedSource: """
                 public enum Visa {
-                  case hello, world
+                  case hello_world
+                  case hello_world_2
                   case custom(String)
+                  case hello_world_3
 
                   public var rawValue: String {
                     switch self {
-                    case .hello:
-                      return "hello"
-                    case .world:
-                      return "world"
+                    case .hello_world:
+                      return "hello_world"
+                    case .hello_world_2:
+                      return "hello_world_2"
                     case .custom(let value):
                       return value
+                    case .hello_world_3:
+                      return "hello_world_3"
                     }
                   }
 
                   public init?(rawValue: String) {
                     switch rawValue {
-                    case "hello":
-                      self = .hello
-                    case "world":
-                      self = .world
+                    case "hello_world":
+                      self = .hello_world
+                    case "hello_world_2":
+                      self = .hello_world_2
+                    case "hello_world_3":
+                      self = .hello_world_3
                     default:
                       self = .custom(rawValue)
                     }

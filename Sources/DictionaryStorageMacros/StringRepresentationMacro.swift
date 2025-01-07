@@ -60,7 +60,7 @@ extension StringRepresentationMacro: MemberMacro {
 
         let initializer = try InitializerDeclSyntax("\(modifier) init?(rawValue: String)") {
             try SwitchExprSyntax("switch rawValue") {
-                var hasDefault = false
+                var defaultValue: TokenSyntax?
                 for caseDecl in cases {
                     let customName = customName(for: caseDecl)
 					let customPrefix = customPrefix(for: caseDecl)
@@ -83,17 +83,18 @@ extension StringRepresentationMacro: MemberMacro {
                                 """
                             )
                         } else {
-							let _ = (hasDefault = true)
-                            SwitchCaseSyntax(
-                                """
-                                default:
-                                  self = .\(name)(rawValue)
-                                """
-                            )
+							let _ = (defaultValue = name)
                         }
                     }
                 }
-                if !hasDefault {
+                if let name = defaultValue {
+                    SwitchCaseSyntax(
+                        """
+                        default:
+                          self = .\(name)(rawValue)
+                        """
+                    )
+                } else {
                     SwitchCaseSyntax(
                         """
                         default:
