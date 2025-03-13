@@ -60,7 +60,7 @@ public macro DictionaryStorageProperty(_ key: String) =
 /// Automating RawRepresentable Conformance or enum with string.
 @attached(member, names: named(rawValue), named(init))
 @attached(extension, conformances: RawRepresentable, Equatable)
-public macro StringRawRepresentation() =
+public macro StringRawRepresentation(noInit: Bool = false, pureName: Bool = false) =
     #externalMacro(module: "DictionaryStorageMacros", type: "StringRepresentationMacro")
 
 /// Customize name of the key for @StringRawRepresentation.

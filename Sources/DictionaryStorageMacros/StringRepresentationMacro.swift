@@ -32,7 +32,12 @@ extension StringRepresentationMacro: ExtensionMacro {
             """
         guard let rawRepresentable = rawRepresentableExtension.as(ExtensionDeclSyntax.self) else { return [] }
         guard let equtable = equatableExtension.as(ExtensionDeclSyntax.self) else { return [] }
-
+        
+        let noInit = node.getInputParameter("noInit")?.as(BooleanLiteralExprSyntax.self)?.literal.tokenKind == .keyword(.true)
+        
+        if noInit {
+            return [equtable]
+        }
         return [rawRepresentable, equtable]
     }
 }
@@ -57,6 +62,51 @@ extension StringRepresentationMacro: MemberMacro {
             }
 
         let modifier: TokenSyntax = declaration.modifiers.isPublic ? "public" : ""
+
+        let noInit = node.getInputParameter("noInit")?.as(BooleanLiteralExprSyntax.self)?.literal.tokenKind == .keyword(.true)
+        let pureName = node.getInputParameter("pureName")?.as(BooleanLiteralExprSyntax.self)?.literal.tokenKind == .keyword(.true)
+        
+        let variable = try VariableDeclSyntax("\(modifier) var rawValue: String") {
+            try SwitchExprSyntax("switch self") {
+                for caseDecl in cases {
+                    let customName = customName(for: caseDecl)
+                    let customPrefix = customPrefix(for: caseDecl)
+                    for element in caseDecl.elements {
+
+                        let value = customName ?? element.name.trimmed
+
+                        if element.parameterClause == nil || pureName {
+                            SwitchCaseSyntax(
+                                """
+                                case .\(element.name.trimmed):
+                                  return "\(value)"
+                                """
+                            )
+                        } else if let customPrefix {
+                            SwitchCaseSyntax(
+                                """
+                                case .\(element.name.trimmed)(let value):
+                                  return "\(customPrefix)" + value
+                                """
+                            )
+                        } else {
+                            SwitchCaseSyntax(
+                                """
+                                case .\(element.name.trimmed)(let value):
+                                  return value
+                                """
+                            )
+                        }
+                    }
+                }
+            }
+        }
+        
+        if noInit {
+            return [
+                DeclSyntax(variable)
+            ]
+        }
 
         let initializer = try InitializerDeclSyntax("\(modifier) init?(rawValue: String)") {
             try SwitchExprSyntax("switch rawValue") {
@@ -105,42 +155,6 @@ extension StringRepresentationMacro: MemberMacro {
             }
         }
 
-        let variable = try VariableDeclSyntax("\(modifier) var rawValue: String") {
-            try SwitchExprSyntax("switch self") {
-                for caseDecl in cases {
-                    let customName = customName(for: caseDecl)
-                    let customPrefix = customPrefix(for: caseDecl)
-                    for element in caseDecl.elements {
-
-                        let value = customName ?? element.name.trimmed
-
-                        if element.parameterClause == nil {
-                            SwitchCaseSyntax(
-                                """
-                                case .\(element.name.trimmed):
-                                  return "\(value)"
-                                """
-                            )
-                        } else if let customPrefix {
-                            SwitchCaseSyntax(
-                                """
-                                case .\(element.name.trimmed)(let value):
-                                  return "\(customPrefix)" + value
-                                """
-                            )
-                        } else {
-                            SwitchCaseSyntax(
-                                """
-                                case .\(element.name.trimmed)(let value):
-                                  return value
-                                """
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
         return [
             DeclSyntax(variable),
             DeclSyntax(initializer)
@@ -170,5 +184,17 @@ extension StringRepresentationMacro {
             throw CustomError.message("@StringRawRepresentation only works with Enums")
         }
         return true
+    }
+}
+
+extension AttributeSyntax {
+    /// 获取宏的参数
+    func getInputParameter(_ name: String) -> ExprSyntax? {
+        if case let .argumentList(arguments) = arguments,
+           let element = arguments.first(where: { $0.label?.text == name })
+        {
+            return element.expression
+        }
+        return nil
     }
 }
